@@ -4,8 +4,21 @@ import { TipOfTheDay } from "@/components/sections/learning/tips-section";
 import JourneyDashboard from "@/components/sections/routes/journey-section";
 import { getChapters, getLessonsByChapter } from "@/lib/lessons/lessons";
 import type { Lesson } from "@/types/types";
+import { createClient } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
 
 export default async function JourneyPage() {
+
+  const supabase = await createClient();
+
+  // Get authenticated user
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return redirect("/sign-in");
+  }
 
   const chapters = await getChapters();
   const lessonsMap: { [key: string]: Lesson[] } = {};
