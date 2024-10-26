@@ -1,10 +1,10 @@
 import { signUpAction } from "@/app/actions";
-import { FormMessage, Message } from "@/components/form-message";
-import { SubmitButton } from "@/components/submit-button";
+import { FormMessage, type Message } from "@/components/form-message";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { SmtpMessage } from "../smtp-message";
+import {Button} from '@/components/ui/button';
 
 export default async function Signup(props: {
   searchParams: Promise<Message>;
@@ -39,9 +39,9 @@ export default async function Signup(props: {
             minLength={6}
             required
           />
-          <SubmitButton formAction={signUpAction} pendingText="Signing up...">
+          <Button formAction={signUpAction}>
             Sign up
-          </SubmitButton>
+          </Button>
           <FormMessage message={searchParams} />
         </div>
       </form>

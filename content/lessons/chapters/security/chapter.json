@@ -1,0 +1,11 @@
+{
+  "id": "security-fundamentals",
+  "title": "Security Fundamentals",
+  "description": "Learn about essential security practices and common attack vectors in the Web3 ecosystem.",
+  "order": 4,
+  "xpReward": 500,
+  "category": "Security Fundamentals",
+  "status": "locked",
+  "totalLessons": 4,
+  "completedLessons": 0
+}

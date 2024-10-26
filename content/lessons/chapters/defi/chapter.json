@@ -1,0 +1,11 @@
+{
+  "id": "defi-essentials",
+  "title": "DeFi Essentials",
+  "description": "Learn about decentralized finance (DeFi) and its key components, including DEXes, lending, borrowing, and yield farming.",
+  "order": 6,
+  "xpReward": 500,
+  "category": "DeFi",
+  "status": "locked",
+  "totalLessons": 3,
+  "completedLessons": 0
+}
