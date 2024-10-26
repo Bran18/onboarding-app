@@ -32,7 +32,7 @@ import { useUser } from "@/hooks/use-user";
 export const UserAccount = () => {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-  const { user, isLoading, refreshSession } = useUser();
+  const { user, isLoading } = useUser();
   const router = useRouter();
   const supabase = createClient();
 
@@ -46,19 +46,14 @@ export const UserAccount = () => {
       .toUpperCase();
   };
 
-  useEffect(() => {
-    // Refresh session when component mounts
-    refreshSession();
-  }, [refreshSession]);
-
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
 
-      await refreshSession();
       toast.success("Logged out successfully");
+      router.push('/sign-in');
     } catch (error) {
       console.error('Error logging out:', error);
       toast.error("Failed to log out");
