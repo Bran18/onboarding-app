@@ -1,7 +1,8 @@
-export type Message =
+export type Message = 
+  | { type: "success"; message: string }
+  | { type: "error"; message: string }
   | { success: string }
-  | { error: string }
-  | { message: string };
+  | { error: string };
 
 export function FormMessage({ message }: { message: Message }) {
   return (

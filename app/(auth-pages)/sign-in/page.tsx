@@ -1,44 +1,122 @@
 import { signInAction } from "@/app/actions";
 import { FormMessage, type Message } from "@/components/form-message";
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import { Github, Mail, Lock } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 export default async function Login(props: { searchParams: Promise<Message> }) {
   const searchParams = await props.searchParams;
+
   return (
-    <form className="flex-1 flex flex-col min-w-64">
-      <h1 className="text-2xl font-medium">Sign in</h1>
-      <p className="text-sm text-foreground">
-        Don't have an account?{" "}
-        <Link className="text-foreground font-medium underline" href="/sign-up">
-          Sign up
-        </Link>
-      </p>
-      <div className="flex flex-col gap-2 [&>input]:mb-3 mt-8">
-        <Label htmlFor="email">Email</Label>
-        <Input name="email" placeholder="you@example.com" required />
-        <div className="flex justify-between items-center">
-          <Label htmlFor="password">Password</Label>
-          <Link
-            className="text-xs text-foreground underline"
-            href="/forgot-password"
-          >
-            Forgot Password?
-          </Link>
-        </div>
-        <Input
-          type="password"
-          name="password"
-          placeholder="Your password"
-          required
-        />
-        <Button formAction={signInAction}>
-          Sign in
-        </Button>
-        <FormMessage message={searchParams} />
-      </div>
-    </form>
+    <div className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-b from-background/50 to-muted/50">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-2 text-center">
+          {/* Logo or Brand */}
+          <div className="flex justify-center mb-4">
+            <div className="rounded-full bg-primary/10 p-4">
+              <Lock className="h-6 w-6 text-primary" />
+            </div>
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Welcome back
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Enter your email to sign in to your account
+          </p>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-4">
+            {/* OAuth Buttons */}
+            <div className="space-y-2">
+              <Button variant="outline" className="w-full" type="button">
+                <Github className="mr-2 h-4 w-4" />
+                Continue with GitHub
+              </Button>
+              <Button variant="outline" className="w-full" type="button">
+                <Mail className="mr-2 h-4 w-4" />
+                Continue with Google
+              </Button>
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    placeholder="••••••••"
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+
+              <Button className="w-full" formAction={signInAction}>
+                Sign in
+              </Button>
+            </div>
+
+            <FormMessage message={searchParams} />
+          </form>
+        </CardContent>
+        <CardFooter className="flex flex-col space-y-4 border-t p-6">
+          <div className="text-center text-sm text-muted-foreground">
+            Don't have an account?{" "}
+            <Link
+              href="/sign-up"
+              className="text-primary underline hover:text-primary/80"
+            >
+              Sign up
+            </Link>
+          </div>
+        </CardFooter>
+      </Card>
+    </div>
   );
 }
