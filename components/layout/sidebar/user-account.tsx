@@ -27,12 +27,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { useUser } from "@/hooks/use-user";
+import { useAuth } from "@/hooks/auth/use-user";
 
 export const UserAccount = () => {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-  const { user, isLoading } = useUser();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
   const supabase = createClient();
 

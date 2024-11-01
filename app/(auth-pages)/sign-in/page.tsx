@@ -1,26 +1,58 @@
-import { signInAction } from "@/app/actions";
-import { FormMessage, type Message } from "@/components/form-message";
+// app/(auth-pages)/sign-in/page.tsx
+'use client';
+
+import { useState } from 'react';
+import { useAuthActions } from '@/hooks/auth/use-auth-actions';
+import { useAuth } from '@/hooks/auth/use-user';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FormMessage, type Message } from "@/components/form-message";
+import { Github, Mail, Lock, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { Github, Mail, Lock } from "lucide-react";
 import {
   Card,
   CardContent,
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 
-export default async function Login(props: { searchParams: Promise<Message> }) {
-  const searchParams = await props.searchParams;
+export default function SignIn({ 
+  searchParams 
+}: { 
+  searchParams: Message 
+}) {
+  const [isLoading, setIsLoading] = useState(false);
+  const { signIn } = useAuthActions();
+  const { refreshSession } = useAuth();
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const formData = new FormData(e.currentTarget);
+      const email = formData.get('email') as string;
+      const password = formData.get('password') as string;
+
+      const result = await signIn(email, password);
+      if (result?.error) {
+        throw result.error;
+      }
+
+      // Refresh session after successful sign in
+      await refreshSession();
+    } catch (error) {
+      console.error('Sign in error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-b from-background/50 to-muted/50">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-2 text-center">
-          {/* Logo or Brand */}
           <div className="flex justify-center mb-4">
             <div className="rounded-full bg-primary/10 p-4">
               <Lock className="h-6 w-6 text-primary" />
@@ -34,7 +66,7 @@ export default async function Login(props: { searchParams: Promise<Message> }) {
           </p>
         </CardHeader>
         <CardContent>
-          <form className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* OAuth Buttons */}
             <div className="space-y-2">
               <Button variant="outline" className="w-full" type="button">
@@ -97,7 +129,14 @@ export default async function Login(props: { searchParams: Promise<Message> }) {
                 </div>
               </div>
 
-              <Button className="w-full" formAction={signInAction}>
+              <Button 
+                className="w-full" 
+                type="submit"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
                 Sign in
               </Button>
             </div>

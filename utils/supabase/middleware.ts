@@ -1,19 +1,19 @@
+// middleware.ts
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
 export const updateSession = async (request: NextRequest) => {
-  // This `try/catch` block is only here for the interactive tutorial.
-  // Feel free to remove once you have Supabase connected.
   try {
-    // Create an unmodified response
-    let response = NextResponse.next({
+    const response = NextResponse.next({
       request: {
         headers: request.headers,
       },
     });
 
     const supabase = createServerClient(
+      // biome-ignore lint/style/noNonNullAssertion: <explanation>
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      // biome-ignore lint/style/noNonNullAssertion: <explanation>
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
@@ -21,42 +21,81 @@ export const updateSession = async (request: NextRequest) => {
             return request.cookies.getAll();
           },
           setAll(cookiesToSet) {
+            // biome-ignore lint/complexity/noForEach: <explanation>
             cookiesToSet.forEach(({ name, value }) =>
-              request.cookies.set(name, value),
+              request.cookies.set(name, value)
             );
-            response = NextResponse.next({
-              request,
-            });
+            // biome-ignore lint/complexity/noForEach: <explanation>
             cookiesToSet.forEach(({ name, value, options }) =>
-              response.cookies.set(name, value, options),
+              response.cookies.set(name, value, options)
             );
           },
         },
-      },
+      }
     );
 
-    // This will refresh session if expired - required for Server Components
-    // https://supabase.com/docs/guides/auth/server-side/nextjs
-    const user = await supabase.auth.getUser();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    // protected routes
-    if (request.nextUrl.pathname.startsWith("/protected") && user.error) {
-      return NextResponse.redirect(new URL("/sign-in", request.url));
+    // Allow access to auth-related pages during sign-up flow
+    if (
+      request.nextUrl.pathname === "/sign-up" &&
+      request.nextUrl.searchParams.has("success")
+    ) {
+      return response;
     }
 
-    if (request.nextUrl.pathname === "/" && !user.error) {
-      return NextResponse.redirect(new URL("/protected", request.url));
+       // Allow access to confirmation page and auth callback
+       if (
+        request.nextUrl.pathname.startsWith("/auth/callback") ||
+        request.nextUrl.pathname.startsWith("/confirmed")
+      ) {
+        return response;
+      }
+
+    // Check for auth pages and redirect if already authenticated
+    if (
+      session &&
+      (request.nextUrl.pathname.startsWith("/sign-in") ||
+        request.nextUrl.pathname.startsWith("/sign-up") ||
+        request.nextUrl.pathname.startsWith("/forgot-password"))
+    ) {
+      return NextResponse.redirect(new URL("/journey", request.url));
+    }
+
+    // Check for protected pages and redirect if not authenticated
+    if (
+      !session &&
+      (request.nextUrl.pathname.startsWith("/journey") ||
+        request.nextUrl.pathname.startsWith("/ai-assistant") ||
+        request.nextUrl.pathname.startsWith("/progress"))
+    ) {
+      const redirectUrl = new URL("/sign-in", request.url);
+      redirectUrl.searchParams.set("redirectTo", request.nextUrl.pathname);
+      return NextResponse.redirect(redirectUrl);
     }
 
     return response;
-  } catch (e) {
-    // If you are here, a Supabase client could not be created!
-    // This is likely because you have not set up environment variables.
-    // Check out http://localhost:3000 for Next Steps.
+  } catch (error) {
+    console.error("Middleware error:", error);
     return NextResponse.next({
       request: {
         headers: request.headers,
       },
     });
   }
+};
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * Feel free to modify this pattern to include more paths.
+     */
+    "/((?!_next/static|_next/image|favicon.ico).*)",
+  ],
 };

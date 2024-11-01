@@ -5,14 +5,56 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { Github, Mail, Lock, UserPlus } from "lucide-react";
+import { Github, Mail, Lock, UserPlus, CheckCircle2, ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { SmtpMessage } from "../smtp-message";
+
+function SignUpSuccessState({ message }: { message: string }) {
+  return (
+    <div className="w-full flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardContent className="pt-6 text-center space-y-4">
+          <div className="flex justify-center">
+            <div className="rounded-full bg-green-100 dark:bg-green-900/30 p-4">
+              <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-500" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-semibold tracking-tight">
+              Check your email
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {message}
+            </p>
+          </div>
+          <div className="pt-4">
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center text-sm text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to home
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 
 export default async function Signup(props: {
   searchParams: Promise<Message>;
 }) {
   const searchParams = await props.searchParams;
+
+  const successMessage = 
+  'success' in searchParams ? searchParams.success :
+  'message' in searchParams && searchParams.type === 'success' ? searchParams.message :
+  null;
+
+if (successMessage) {
+  return <SignUpSuccessState message={successMessage} />;
+}
 
   if ("message" in searchParams) {
     return (
@@ -106,8 +148,13 @@ export default async function Signup(props: {
                 Create account
               </Button>
             </div>
-
-            <FormMessage message={searchParams} />
+            <FormMessage 
+              message={
+                'error' in searchParams ? 
+                { type: 'error', message: searchParams.error } : 
+                searchParams
+              } 
+            />
           </form>
         </CardContent>
         <CardFooter className="flex flex-col space-y-4 border-t p-6">

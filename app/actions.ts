@@ -26,15 +26,15 @@ export const signUpAction = async (formData: FormData) => {
 
     // Validate inputs
     if (!email || !password) {
-      return encodedRedirect("error", "/sign-up", "Email and password are required");
+      throw encodedRedirect("error", "/sign-up", "Email and password are required");
     }
 
     if (!isValidEmail(email)) {
-      return encodedRedirect("error", "/sign-up", "Please enter a valid email address");
+      throw encodedRedirect("error", "/sign-up", "Please enter a valid email address");
     }
 
     if (!isValidPassword(password)) {
-      return encodedRedirect(
+      throw encodedRedirect(
         "error",
         "/sign-up",
         "Password must be at least 6 characters long"
@@ -54,17 +54,24 @@ export const signUpAction = async (formData: FormData) => {
 
     if (error) {
       console.error(`Sign up error: ${error.code} - ${error.message}`);
-      return encodedRedirect("error", "/sign-up", error.message);
+      throw encodedRedirect("error", "/sign-up", error.message);
     }
 
-    return encodedRedirect(
+    // On success, throw the redirect
+    throw encodedRedirect(
       "success",
       "/sign-up",
       `Verification email sent to ${email}. Please check your inbox.`
     );
   } catch (error) {
+    // If it's already a redirect error, just rethrow it
+    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
+      throw error;
+    }
+    
+    // Otherwise, create a new error redirect
     console.error("Unexpected error during sign up:", error);
-    return encodedRedirect("error", "/sign-up", "An unexpected error occurred");
+    throw encodedRedirect("error", "/sign-up", "An unexpected error occurred");
   }
 };
 
@@ -75,7 +82,7 @@ export const signInAction = async (formData: FormData) => {
     const supabase = await createClient();
 
     if (!email || !password) {
-      return encodedRedirect("error", "/sign-in", "Email and password are required");
+      throw encodedRedirect("error", "/sign-in", "Email and password are required");
     }
 
     const { error } = await supabase.auth.signInWithPassword({
@@ -85,23 +92,27 @@ export const signInAction = async (formData: FormData) => {
 
     if (error) {
       if (error.message.includes("Invalid login")) {
-        return encodedRedirect("error", "/sign-in", "Invalid email or password");
+        throw encodedRedirect("error", "/sign-in", "Invalid email or password");
       }
-      return encodedRedirect("error", "/sign-in", error.message);
+      throw encodedRedirect("error", "/sign-in", error.message);
     }
 
-    // Add a small delay to ensure the session is properly set
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    // Use revalidatePath to force a server re-render
+    // Don't need the delay anymore since we're handling the session in middleware
     revalidatePath('/', 'layout');
     
-    return redirect("/journey");
+    // Throw the redirect to journey page
+    throw redirect("/journey");
   } catch (error) {
+    // If it's already a redirect error, just throw it
+    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
+      throw error;
+    }
+    
     console.error("Unexpected error during sign in:", error);
-    return encodedRedirect("error", "/sign-in", "An unexpected error occurred");
+    throw encodedRedirect("error", "/sign-in", "An unexpected error occurred");
   }
 };
+
 
 export const forgotPasswordAction = async (formData: FormData) => {
   try {
