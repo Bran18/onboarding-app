@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
+import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,15 +25,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
-import { useAuth } from "@/hooks/auth/use-user";
+import { useSupabase } from "@/context/use-supabase";
+import { useAuthActions } from "@/hooks/auth/use-auth-actions";
 
 export const UserAccount = () => {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-  const { user, isLoading } = useAuth();
+  const { user, loading } = useSupabase();
+  const { signOut } = useAuthActions();
   const router = useRouter();
-  const supabase = createClient();
 
   // Get initials for avatar fallback
   const getInitials = (email: string) => {
@@ -49,21 +48,14 @@ export const UserAccount = () => {
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true);
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-
-      toast.success("Logged out successfully");
-      router.push('/sign-in');
-    } catch (error) {
-      console.error('Error logging out:', error);
-      toast.error("Failed to log out");
+      await signOut();
     } finally {
       setIsLoggingOut(false);
       setShowLogoutDialog(false);
     }
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <Button variant="ghost" className="relative w-full justify-start px-2">
         <Avatar className="h-8 w-8">
@@ -84,7 +76,7 @@ export const UserAccount = () => {
       <Button
         variant="ghost"
         className="relative w-full justify-start px-2"
-        onClick={() => router.push('/sign-in')}
+        onClick={() => router.push("/sign-in")}
       >
         <Avatar className="h-8 w-8">
           <AvatarFallback>
@@ -93,9 +85,7 @@ export const UserAccount = () => {
         </Avatar>
         <div className="ml-2 flex-1 text-left">
           <p className="text-sm font-medium">Welcome</p>
-          <p className="text-xs text-muted-foreground">
-            Click here to sign in
-          </p>
+          <p className="text-xs text-muted-foreground">Click here to sign in</p>
         </div>
       </Button>
     );
@@ -103,32 +93,33 @@ export const UserAccount = () => {
 
   return (
     <>
-       <DropdownMenu>
+      <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative w-full justify-start px-2">
+          <Button
+            variant="ghost"
+            className="relative w-full justify-start px-2"
+          >
             <Avatar className="h-8 w-8">
-              <AvatarImage 
-                src={user?.user_metadata?.avatar_url} 
-                alt={`${user?.email} avatar`} 
+              <AvatarImage
+                src={user?.user_metadata?.avatar_url}
+                alt={`${user?.email} avatar`}
               />
               <AvatarFallback>
-                {getInitials(user?.email || 'Anonymous')}
+                {getInitials(user?.email || "Anonymous")}
               </AvatarFallback>
             </Avatar>
             <div className="ml-2 flex-1 text-left">
               <p className="text-sm font-medium">
-                {user?.user_metadata?.full_name || user?.email?.split('@')[0]}
+                {user?.user_metadata?.full_name || user?.email?.split("@")[0]}
               </p>
-              <p className="text-xs text-muted-foreground">
-                {user?.email}
-              </p>
+              <p className="text-xs text-muted-foreground">{user?.email}</p>
             </div>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end" side="top">
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {user && ( // Only show these items if user is authenticated
+          {user && (
             <>
               <DropdownMenuGroup>
                 <DropdownMenuItem>
@@ -149,7 +140,7 @@ export const UserAccount = () => {
               <ThemeToggler />
             </div>
           </DropdownMenuItem>
-          {user && ( // Only show logout if user is authenticated
+          {user && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -165,12 +156,12 @@ export const UserAccount = () => {
               </DropdownMenuItem>
             </>
           )}
-         {!user && ( // Show sign in if user is not authenticated
+          {!user && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-primary"
-                onClick={() => router.push('/sign-in')}
+                onClick={() => router.push("/sign-in")}
               >
                 <LogIn className="mr-2 h-4 w-4" />
                 <span>Sign in</span>
@@ -180,8 +171,7 @@ export const UserAccount = () => {
         </DropdownMenuContent>
       </DropdownMenu>
 
-       {/* Only render logout dialog if user is authenticated */}
-       {user && (
+      {user && (
         <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>

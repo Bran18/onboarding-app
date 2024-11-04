@@ -8,29 +8,28 @@ import { createClient } from "@/utils/supabase/server";
 export default async function AuthButton() {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error) {
+    console.error("Error fetching user:", error);
+    return null;
+  }
 
   if (!hasEnvVars) {
     return (
       <>
         <div className="flex gap-4 items-center">
-          <div>
-            <Badge
-              variant={"default"}
-              className="font-normal pointer-events-none"
-            >
-              Please update .env.local file with anon key and url
-            </Badge>
-          </div>
+          <Badge
+            variant={"default"}
+            className="font-normal pointer-events-none"
+          >
+            Please update .env.local file with anon key and url
+          </Badge>
           <div className="flex gap-2">
             <Button
               asChild
               size="sm"
               variant={"outline"}
               disabled
-              className="opacity-75 cursor-none pointer-events-none"
             >
               <Link href="/sign-in">Sign in</Link>
             </Button>
@@ -39,7 +38,6 @@ export default async function AuthButton() {
               size="sm"
               variant={"default"}
               disabled
-              className="opacity-75 cursor-none pointer-events-none"
             >
               <Link href="/sign-up">Sign up</Link>
             </Button>
