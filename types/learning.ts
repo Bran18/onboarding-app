@@ -8,15 +8,15 @@ export interface DBChapter {
 }
 
 export interface DBLesson {
-  id: string;
-  slug: string;
-  title: string;
-  description: string;
-  estimated_time: number;
-  order_sequence: number;
-  status: string;
-  xp_reward: number;
-  chapter_id: string;
+  id?: string;
+  slug?: string;
+  title?: string;
+  description?: string;
+  estimated_time?: number;
+  order_sequence?: number;
+  status?: string;
+  xp_reward?: number;
+  chapter_id?: string;
 }
 
 // UI Types

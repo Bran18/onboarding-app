@@ -17,7 +17,7 @@ function transformStatus(dbStatus: string, progress?: LessonProgress) {
 // Transform DB chapter to UI chapter
 function transformChapter(
   chapter: DBChapter,
-  completedLessonsCount: number = 0
+  completedLessonsCount: number
 ): Chapter {
   return {
     ...chapter,
@@ -268,25 +268,54 @@ export async function getLesson(
 export async function updateLessonProgress(
   userId: string,
   lessonId: string,
-  isCompleted: boolean = false
+  isCompleted: boolean
 ) {
   const supabase = await createClient();
+  const timestamp = new Date().toISOString();
 
   try {
-    const { data, error } = await supabase
+    // First, check if a record exists
+    const { data: existingProgress } = await supabase
       .from("user_lesson_progress")
-      .upsert({
-        user_id: userId,
-        lesson_id: lessonId,
-        is_completed: isCompleted,
-        completed_at: isCompleted ? new Date().toISOString() : null,
-        started_at: new Date().toISOString(),
-      })
-      .select()
+      .select("*")
+      .eq("user_id", userId)
+      .eq("lesson_id", lessonId)
       .single();
 
-    if (error) throw error;
-    return { data, error: null };
+    if (existingProgress) {
+      // Update existing record
+      const { data, error } = await supabase
+        .from("user_lesson_progress")
+        .update({
+          is_completed: isCompleted,
+          completed_at: isCompleted ? timestamp : null,
+          updated_at: timestamp
+        })
+        .eq("user_id", userId)
+        .eq("lesson_id", lessonId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { data, error: null };
+    // biome-ignore lint/style/noUselessElse: <explanation>
+    } else {
+      // Insert new record
+      const { data, error } = await supabase
+        .from("user_lesson_progress")
+        .insert({
+          user_id: userId,
+          lesson_id: lessonId,
+          is_completed: isCompleted,
+          started_at: timestamp,
+          completed_at: isCompleted ? timestamp : null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { data, error: null };
+    }
   } catch (error) {
     console.error("Error in updateLessonProgress:", error);
     return { data: null, error };

@@ -1,6 +1,7 @@
 "use client";
 
 import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 interface ProgressBarProps {
   value: number;
@@ -10,17 +11,16 @@ interface ProgressBarProps {
 }
 
 export function ProgressBar({ value, max, showLabel = true, className = '' }: ProgressBarProps) {
-  const percentage = Math.round((value / max) * 100);
-  
+    // Ensure value is between 0 and max
+    const safeValue = Math.min(Math.max(0, value), max);
+    // Calculate percentage
+    const percentage = Math.floor((safeValue / max) * 100);
   return (
-    <div className={`space-y-2 ${className}`}>
-      <Progress value={percentage} className="h-2" />
-      {showLabel && (
-        <div className="flex justify-between text-sm text-muted-foreground">
-          <span>Progress</span>
-          <span>{value} / {max}</span>
-        </div>
-      )}
+      <div className={cn("w-full", className)}>
+      <Progress value={percentage} max={100} />
+      <p className="mt-1 text-xs text-muted-foreground">
+        Progress: {percentage}%
+      </p>
     </div>
   );
 }

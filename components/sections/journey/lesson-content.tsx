@@ -1,15 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ProgressBar } from "./progress-bar";
-import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import { CheckCircle, ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import Link from "next/link";
 import { XPCounter } from "./xp-counter";
 import { CustomMarkdown } from "@/components/shared/markdown";
 import type { Lesson } from "@/types/learning";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { useLearningProgress } from "@/context/learning-progress";
+import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
 import { updateLessonProgress } from "@/lib/lessons/lessons";
 
 interface LessonContentProps {
@@ -18,48 +23,107 @@ interface LessonContentProps {
   nextLessonSlug?: string;
 }
 
-export function LessonContent({ 
-  lesson, 
+export function LessonContent({
+  lesson,
   userId,
-  nextLessonSlug 
+  nextLessonSlug,
 }: LessonContentProps) {
+  const router = useRouter();
+  const { markLessonComplete, startLessonProgress, getLessonStatus } =
+    useLearningProgress();
   const [progress, setProgress] = useState(0);
   const [timeSpent, setTimeSpent] = useState(0);
   const [isCompleting, setIsCompleting] = useState(false);
+  const currentStatus = getLessonStatus(lesson.id);
+  const startTimeRef = useRef<number | null>(null);
+  const [hasFinishedReading, setHasFinishedReading] = useState(false);
 
+  // Initialize start time once
   useEffect(() => {
-    if (lesson.status === 'in_progress') {
-      const startTime = new Date(lesson.progress?.started_at || Date.now()).getTime();
-      const timer = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
-        setTimeSpent(elapsed);
-        
-        const progressPercentage = Math.min(
-          (elapsed / (lesson.estimated_time * 60)) * 100,
-          100
-        );
-        setProgress(progressPercentage);
-      }, 1000);
-
-      return () => clearInterval(timer);
+    if (currentStatus === "in_progress" && !startTimeRef.current) {
+      startTimeRef.current = lesson.progress?.started_at
+        ? new Date(lesson.progress.started_at).getTime()
+        : Date.now();
     }
-  }, [lesson]);
+  }, [currentStatus, lesson.progress?.started_at]);
+
+  // Track progress
+  useEffect(() => {
+    if (currentStatus !== "in_progress" || !startTimeRef.current) return;
+
+    const updateProgress = () => {
+      const now = Date.now();
+      // biome-ignore lint/style/noNonNullAssertion: <explanation>
+      const elapsed = Math.floor((now - startTimeRef.current!) / 1000); // seconds
+      setTimeSpent(elapsed);
+
+      // Calculate progress as a percentage (0-100)
+      const totalTimeInSeconds = lesson.estimated_time * 60;
+      const progressPercentage = Math.min(
+        Math.floor((elapsed / totalTimeInSeconds) * 100),
+        100
+      );
+
+      setProgress(progressPercentage);
+    };
+
+    // Initial update
+    updateProgress();
+
+    // Set up interval for updates
+    const timer = setInterval(updateProgress, 1000);
+
+    return () => clearInterval(timer);
+  }, [currentStatus, lesson.estimated_time]);
+
+  // Start lesson when first viewing
+  useEffect(() => {
+    const initializeLesson = async () => {
+      if (currentStatus === "available") {
+        try {
+          await startLessonProgress(lesson.id);
+          startTimeRef.current = Date.now();
+        } catch (error) {
+          console.error("Error starting lesson:", error);
+          toast.error("Failed to start lesson");
+        }
+      }
+    };
+
+    initializeLesson();
+  }, [lesson.id, currentStatus, startLessonProgress]);
 
   const handleComplete = async () => {
     try {
       setIsCompleting(true);
-      await updateLessonProgress(userId, lesson.id, true);
-      // You might want to add a toast notification here
-      window.location.href = nextLessonSlug 
-        ? `/journey/chapters/${lesson.chapter_id}/${nextLessonSlug}`
-        : `/journey/chapters/${lesson.chapter_id}`;
+      const { error } = await updateLessonProgress(userId, lesson.id, true);
+
+      if (error) {
+        toast.error("Failed to complete lesson");
+        console.error("Error completing lesson:", error);
+        return;
+      }
+
+      toast.success("Lesson completed! 🎉", {
+        description: `You've earned ${lesson.xp_reward} XP!`,
+      });
+
+      // Navigate to next lesson or chapter
+      if (nextLessonSlug) {
+        router.push(`/journey/chapters/${lesson.chapter_id}/${nextLessonSlug}`);
+      } else {
+        router.push(`/journey/chapters/${lesson.chapter_id}`);
+      }
     } catch (error) {
-      console.error('Error completing lesson:', error);
-      // Add error notification here
+      console.error("Error completing lesson:", error);
+      toast.error("Failed to complete lesson");
     } finally {
       setIsCompleting(false);
     }
   };
+
+  const canComplete =
+    progress >= 90 || currentStatus === "completed" || hasFinishedReading;
 
   return (
     <div className="space-y-6">
@@ -71,7 +135,12 @@ export function LessonContent({
           <ChevronLeft className="mr-1 h-4 w-4" />
           Back to Chapter
         </Link>
-        <XPCounter xp={lesson.xp_reward} />
+        <div className="flex items-center gap-4">
+          {currentStatus === "completed" && (
+            <Badge variant="success">Completed</Badge>
+          )}
+          <XPCounter xp={lesson.xp_reward} />
+        </div>
       </div>
 
       <Card>
@@ -82,9 +151,64 @@ export function LessonContent({
               <Clock className="h-4 w-4" />
               <span>{lesson.estimated_time} min</span>
             </Badge>
+            <XPCounter xp={lesson.xp_reward} />
           </div>
-          {lesson.status === 'in_progress' && (
-            <ProgressBar value={progress} max={100} />
+          {currentStatus === "in_progress" && (
+            <div className="space-y-2">
+              <div className="w-full">
+                <Progress value={progress} className="h-2" />
+                <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+                  <span>Progress: {progress}%</span>
+                  <span>
+                    Time: {Math.floor(timeSpent / 60)}m {timeSpent % 60}s
+                  </span>
+                </div>
+              </div>
+              {/* Early completion option */}
+              {progress < 90 && (
+                <div className="mt-4 flex items-center space-x-2 p-4 bg-muted rounded-lg">
+                  <Checkbox
+                    id="finished-reading"
+                    checked={hasFinishedReading}
+                    onCheckedChange={(checked) => {
+                      setHasFinishedReading(checked === true);
+                      if (checked) {
+                        toast.success(
+                          "Great! You can now complete the lesson",
+                          {
+                            description:
+                              "Feel free to review the content or move forward",
+                          }
+                        );
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor="finished-reading"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    I've finished reading and understood the content
+                  </label>
+                </div>
+              )}
+              <p className="text-sm text-muted-foreground">
+                {!canComplete ? (
+                  <span className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    {hasFinishedReading
+                      ? "You can complete this lesson now!"
+                      : `${
+                          90 - progress
+                        }% more to automatically unlock completion`}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2 text-green-600">
+                    <CheckCircle className="h-4 w-4" />
+                    Ready to complete!
+                  </span>
+                )}
+              </p>
+            </div>
           )}
         </CardHeader>
 
@@ -100,14 +224,24 @@ export function LessonContent({
                 Back to Chapter
               </Button>
             </Link>
-            
-            {lesson.status !== 'completed' && (
-              <Button 
+            {currentStatus !== "completed" && (
+              <Button
                 onClick={handleComplete}
-                disabled={isCompleting || progress < 90}
+                disabled={isCompleting || !canComplete}
+                variant={canComplete ? "default" : "outline"}
               >
-                {isCompleting ? "Completing..." : "Complete Lesson"}
-                {nextLessonSlug && <ChevronRight className="ml-2 h-4 w-4" />}
+                {isCompleting ? (
+                  "Completing..."
+                ) : canComplete ? (
+                  <>
+                    Complete Lesson
+                    {nextLessonSlug && (
+                      <ChevronRight className="ml-2 h-4 w-4" />
+                    )}
+                  </>
+                ) : (
+                  "Keep Reading..."
+                )}
               </Button>
             )}
           </div>
