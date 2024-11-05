@@ -3,9 +3,7 @@ id: "web3-basics-lesson3"
 title: "How to Safely Store Cryptocurrency"  
 description: "Learn about different types of cryptocurrency wallets and best practices for securing your digital assets."
 xpReward: 100
-status: "available"
 estimatedTime: 30 
-prerequisites: ["web3-basics-lesson2"]
 order: 3
 ---
 

@@ -3,9 +3,7 @@ id: "security-fundamentals-lesson3"
 title: "Secure Wallet Management"
 description: "Learn best practices for securely managing your Web3 wallets and protecting your digital assets."
 xpReward: 100
-status: "available"
 estimatedTime: 45
-prerequisites: ["navigating-dapps-lesson1"]
 order: 3
 ---
 

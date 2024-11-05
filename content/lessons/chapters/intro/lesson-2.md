@@ -3,9 +3,7 @@ id: "web3-basics-lesson2"
 title: "Introduction to Web3 and Blockchain"
 description: "Gain an understanding of Web3, blockchain technology, and how they enable decentralized applications."
 xpReward: 100
-status: "available" 
 estimatedTime: 45
-prerequisites: ["web3-basics-lesson1"]
 order: 2
 ---
 

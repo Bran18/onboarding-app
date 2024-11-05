@@ -3,9 +3,6 @@
   "title": "Web3 Basics for Everyone",
   "description": "This chapter introduces the core concepts of Web3, including decentralization, blockchain, and cryptocurrency basics.",
   "order": 1,
-  "xpReward": 100,
   "category": "Web3 Basics",
-  "status": "available",
-  "totalLessons": 5,
-  "completedLessons": 0
+  "xpReward": 100
 }

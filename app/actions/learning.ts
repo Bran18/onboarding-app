@@ -1,36 +1,78 @@
-// actions/learning.ts
 import { createClient } from '@/utils/supabase/server';
+import type { Chapter, Lesson } from '@/types/types';
 
-export async function getUserProgress(userId: string) {
-  const supabase = await createClient();
-  
-  const { data, error } = await supabase
-    .from('profiles')
-    .select(`
-      id,
-      current_level,
-      total_xp,
-      streak_count,
-      last_activity_date
-    `)
-    .eq('id', userId)
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function getChapterProgress(userId: string, chapterId: string) {
+export async function getChapterProgress(userId: string, chapterSlug: string) {
   const supabase = await createClient();
   
   const { data, error } = await supabase
     .from('user_chapter_progress')
     .select('*')
     .eq('user_id', userId)
-    .eq('chapter_id', chapterId)
+    .eq('chapter_id', chapterSlug)
     .single();
 
-  if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "not found"
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function unlockChapter(userId: string, chapterSlug: string) {
+  const supabase = await createClient();
+  
+  // Start a transaction to update chapter status and create initial progress
+  const { data, error } = await supabase.rpc('unlock_chapter', {
+    p_user_id: userId,
+    p_chapter_id: chapterSlug
+  });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function syncChaptersWithSupabase(chapters: Chapter[]) {
+  const supabase = await createClient();
+  
+  const { data, error } = await supabase
+    .from('chapters')
+    .upsert(
+      chapters.map(chapter => ({
+        id: chapter.id,
+        slug: chapter.slug,
+        title: chapter.title,
+        description: chapter.description,
+        order_sequence: chapter.orderSequence,
+        status: chapter.status,
+        category: chapter.category,
+        xp_reward: chapter.xpReward,
+        content_path: chapter.content_path
+      })),
+      { onConflict: 'id' }
+    );
+
+  if (error) throw error;
+  return data;
+}
+
+export async function syncLessonsWithSupabase(lessons: Lesson[], chapterSlug: string) {
+  const supabase = await createClient();
+  
+  const { data, error } = await supabase
+    .from('lessons')
+    .upsert(
+      lessons.map(lesson => ({
+        id: lesson.id,
+        slug: lesson.slug,
+        chapter_id: chapterSlug,
+        title: lesson.title,
+        description: lesson.description,
+        xp_reward: lesson.xpReward,
+        estimated_time: lesson.estimatedTime,
+        order_sequence: lesson.orderSequence,
+        content_path: lesson.content_path
+      })),
+      { onConflict: 'id' }
+    );
+
+  if (error) throw error;
   return data;
 }
 
@@ -69,7 +111,6 @@ export async function startLesson(userId: string, lessonId: string) {
 export async function completeLesson(userId: string, lessonId: string) {
   const supabase = await createClient();
   
-  // This will use our complete_lesson function we created in the database
   const { data, error } = await supabase
     .rpc('complete_lesson', {
       p_user_id: userId,

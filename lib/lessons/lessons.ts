@@ -1,150 +1,294 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import matter from "gray-matter";
-import type { Chapter, Lesson } from "@/types/types";
+import { createClient } from "@/utils/supabase/client";
+import type {
+  DBChapter,
+  DBLesson,
+  Chapter,
+  Lesson,
+  LessonProgress,
+} from "@/types/learning";
 
-const CONTENT_DIR = path.join(process.cwd(), "content/lessons");
-
-export async function getChapters(): Promise<Chapter[]> {
-  const chaptersPath = path.join(CONTENT_DIR, "chapters");
-  const chapters = await fs.readdir(chaptersPath);
-
-  const chapterData = await Promise.all(
-    chapters.map(async (chapterDir) => {
-      const chapterConfigPath = path.join(
-        chaptersPath,
-        chapterDir,
-        "chapter.json"
-      );
-      const configContent = await fs.readFile(chapterConfigPath, "utf8");
-      return { ...JSON.parse(configContent), slug: chapterDir };
-    })
-  );
-
-  return chapterData.sort((a, b) => a.order - b.order);
+// Helper to transform DB status to UI status
+function transformStatus(dbStatus: string, progress?: LessonProgress) {
+  if (progress?.is_completed) return "completed";
+  if (progress?.started_at) return "in_progress";
+  return dbStatus === "published" ? "available" : "locked";
 }
 
-export async function getChapter(chapterSlug: string): Promise<Chapter | null> {
+// Transform DB chapter to UI chapter
+function transformChapter(
+  chapter: DBChapter,
+  completedLessonsCount: number = 0
+): Chapter {
+  return {
+    ...chapter,
+    completed_lessons: completedLessonsCount,
+    status: chapter.status === "published" ? "available" : "locked",
+  };
+}
+
+// Transform DB lesson to UI lesson
+function transformLesson(
+  lesson: DBLesson & { lesson_contents?: Array<{ content: string }> },
+  progress?: LessonProgress
+): Lesson {
+  return {
+    ...lesson,
+    content: lesson.lesson_contents?.[0]?.content ?? "",
+    status: transformStatus(lesson.status, progress),
+    progress,
+  };
+}
+
+// Fetch all chapters with progress
+export async function getChapters(userId: string) {
+  const supabase = await createClient();
+
   try {
-    const chapterConfigPath = path.join(
-      CONTENT_DIR,
-      "chapters",
-      chapterSlug,
-      "chapter.json"
-    );
-    const configContent = await fs.readFile(chapterConfigPath, "utf8");
-    const chapterData = JSON.parse(configContent);
+    // Get chapters and user progress in parallel
+    const [chaptersResult, progressResult] = await Promise.all([
+      supabase.from("chapters").select("*").order("order_sequence"),
+      supabase
+        .from("user_lesson_progress")
+        .select("lesson_id, is_completed")
+        .eq("user_id", userId)
+        .eq("is_completed", true),
+    ]);
 
-    // Get the lessons to count completed ones
-    const lessons = await getLessonsByChapter(chapterSlug);
-    const completedLessons = lessons.filter(
-      (lesson) => lesson.status === "completed"
-    ).length;
+    if (chaptersResult.error) throw chaptersResult.error;
 
-    return {
-      ...chapterData,
-      slug: chapterSlug,
-      completedLessons,
-      totalLessons: lessons.length,
-    };
-  } catch (error) {
-    console.error(`Error loading chapter ${chapterSlug}:`, error);
-    return null;
-  }
-}
+    // Count completed lessons per chapter
+    const completedLessonsByChapter = new Map<string, number>();
 
-export async function getLessonsByChapter(
-  chapterSlug: string
-): Promise<Lesson[]> {
-  const chapterPath = path.join(CONTENT_DIR, "chapters", chapterSlug);
-  const files = await fs.readdir(chapterPath);
+    if (progressResult.data) {
+      const lessonResults = await supabase
+        .from("lessons")
+        .select("id, chapter_id")
+        .in(
+          "id",
+          progressResult.data.map((p) => p.lesson_id)
+        );
 
-  const lessons = await Promise.all(
-    files
-      .filter((file) => file.endsWith(".md"))
-      .map(async (file) => {
-        const fullPath = path.join(chapterPath, file);
-        const fileContents = await fs.readFile(fullPath, "utf8");
-        const { data, content } = matter(fileContents);
-
-        return {
-          ...data,
-          slug: file.replace(".md", ""),
-          chapterId: chapterSlug,
-          content,
-        } as Lesson;
-      })
-  );
-
-  return lessons.sort((a, b) => a.order - b.order);
-}
-
-export async function getLesson(
-  chapterSlug: string,
-  lessonSlug: string
-): Promise<Lesson | null> {
-  try {
-    const lessonPath = path.join(
-      CONTENT_DIR,
-      "chapters",
-      chapterSlug,
-      `${lessonSlug}.md`
-    );
-    const fileContents = await fs.readFile(lessonPath, "utf8");
-    const { data, content } = matter(fileContents);
-
-    return {
-      ...data,
-      slug: lessonSlug,
-      chapterId: chapterSlug,
-      content,
-    } as Lesson;
-  } catch (error) {
-    console.error(`Error loading lesson ${lessonSlug}:`, error);
-    return null;
-  }
-}
-
-// Utility function to get next lesson in a chapter
-export async function getNextLesson(
-  currentChapterSlug: string,
-  currentLessonSlug: string
-): Promise<{ chapterSlug: string; lessonSlug: string } | null> {
-  try {
-    const lessons = await getLessonsByChapter(currentChapterSlug);
-    const currentIndex = lessons.findIndex(
-      (lesson) => lesson.slug === currentLessonSlug
-    );
-
-    // If there's a next lesson in the current chapter
-    if (currentIndex < lessons.length - 1) {
-      return {
-        chapterSlug: currentChapterSlug,
-        lessonSlug: lessons[currentIndex + 1].slug,
-      };
-    }
-
-    // If we're at the end of the current chapter, get the next chapter
-    const chapters = await getChapters();
-    const currentChapterIndex = chapters.findIndex(
-      (chapter) => chapter.slug === currentChapterSlug
-    );
-
-    if (currentChapterIndex < chapters.length - 1) {
-      const nextChapter = chapters[currentChapterIndex + 1];
-      const nextChapterLessons = await getLessonsByChapter(nextChapter.slug);
-      
-      if (nextChapterLessons.length > 0) {
-        return {
-          chapterSlug: nextChapter.slug,
-          lessonSlug: nextChapterLessons[0].slug,
-        };
+      if (lessonResults.data) {
+        // biome-ignore lint/complexity/noForEach: <explanation>
+        lessonResults.data.forEach((lesson) => {
+          const count = completedLessonsByChapter.get(lesson.chapter_id) ?? 0;
+          completedLessonsByChapter.set(lesson.chapter_id, count + 1);
+        });
       }
     }
 
-    return null;
+    const chapters = chaptersResult.data.map((chapter) =>
+      transformChapter(chapter, completedLessonsByChapter.get(chapter.id) ?? 0)
+    );
+
+    return { data: chapters, error: null };
   } catch (error) {
-    console.error("Error getting next lesson:", error);
-    return null;
+    console.error("Error in getChapters:", error);
+    return { data: null, error };
+  }
+}
+
+// Fetch single chapter with progress
+export async function getChapter(userId: string, chapterSlug: string) {
+  const supabase = await createClient();
+
+  try {
+    // Get chapter data with proper formatting
+    const { data: chapter, error: chapterError } = await supabase
+      .from("chapters")
+      .select(`
+        *,
+        lessons!inner (
+          id,
+          slug,
+          title,
+          description,
+          estimated_time,
+          order_sequence,
+          status,
+          xp_reward,
+          chapter_id
+        )
+      `)
+      .eq("slug", chapterSlug)
+      .single();
+
+    // Add debugging
+    console.log("Raw chapter data:", chapter);
+    console.log("Raw lessons data:", chapter?.lessons);
+
+    if (chapterError) {
+      console.error("Error fetching chapter:", chapterError);
+      return { data: null, error: chapterError };
+    }
+
+    // Get completed lessons count
+    const { data: completedLessons, error: progressError } = await supabase
+      .from("user_lesson_progress")
+      .select("lesson_id")
+      .eq("user_id", userId)
+      .eq("is_completed", true)
+      .in(
+        "lesson_id", 
+        (chapter?.lessons || []).map(l => l.id)
+      );
+
+    if (progressError) {
+      console.error("Error fetching progress:", progressError);
+    }
+
+    // Transform the lessons to include slugs
+    const transformedChapter = {
+      ...chapter,
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+      lessons: chapter?.lessons?.map((lesson: { slug: any; id: any; }) => ({
+        ...lesson,
+        // Ensure slug exists or create one from the ID as fallback
+        slug: lesson.slug || `lesson-${lesson.id}`
+      })) || [],
+      completed_lessons: completedLessons?.length || 0,
+      status: chapter?.status === "published" ? "available" : "locked"
+    };
+
+    console.log("Transformed chapter:", transformedChapter);
+
+    return {
+      data: transformedChapter,
+      error: null,
+    };
+  } catch (error) {
+    console.error("Error in getChapter:", error);
+    return { data: null, error };
+  }
+}
+
+// Fetch lessons for a chapter with progress
+export async function getLessonsByChapter(userId: string, chapterSlug: string) {
+  const supabase = await createClient();
+
+  try {
+    // First get the chapter to get its ID
+    const { data: chapter } = await supabase
+      .from("chapters")
+      .select("id")
+      .eq("slug", chapterSlug)
+      .single();
+
+    if (!chapter) throw new Error("Chapter not found");
+
+    // Get lessons and progress in parallel
+    const [lessonsResult, progressResult] = await Promise.all([
+      supabase
+        .from("lessons")
+        .select(
+          `
+          *,
+          lesson_contents (content)
+        `
+        )
+        .eq("chapter_id", chapter.id) // Use chapter.id instead of slug
+        .order("order_sequence"),
+      supabase.from("user_lesson_progress").select("*").eq("user_id", userId),
+    ]);
+
+    if (lessonsResult.error) throw lessonsResult.error;
+
+    const lessons = lessonsResult.data.map((lesson) =>
+      transformLesson(
+        lesson,
+        progressResult.data?.find((p) => p.lesson_id === lesson.id)
+      )
+    );
+
+    return { data: lessons, error: null };
+  } catch (error) {
+    console.error("Error in getLessonsByChapter:", error);
+    return { data: null, error };
+  }
+}
+
+// Fetch single lesson with progress
+export async function getLesson(
+  userId: string,
+  chapterSlug: string,
+  lessonSlug: string
+) {
+  const supabase = await createClient();
+
+  try {
+    // First get the chapter to get its ID
+    const { data: chapter } = await supabase
+      .from("chapters")
+      .select("id")
+      .eq("slug", chapterSlug)
+      .single();
+
+    if (!chapter) throw new Error("Chapter not found");
+
+    // Then get lesson and progress in parallel
+    const [lessonResult, progressResult] = await Promise.all([
+      supabase
+        .from("lessons")
+        .select(
+          `
+          *,
+          lesson_contents (content)
+        `
+        )
+        .eq("chapter_id", chapter.id)
+        .eq("slug", lessonSlug)
+        .single(),
+      supabase
+        .from("user_lesson_progress")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("lesson_id", lessonSlug)
+        .maybeSingle(), // Use maybeSingle() instead of single()
+    ]);
+
+    if (lessonResult.error) throw lessonResult.error;
+
+    // Add chapter_id to the lesson data for navigation
+    const lessonData = {
+      ...lessonResult.data,
+      chapter_id: chapterSlug, // Add this for navigation
+    };
+
+    return {
+      data: transformLesson(lessonData, progressResult.data),
+      error: null,
+    };
+  } catch (error) {
+    console.error("Error in getLesson:", error);
+    return { data: null, error };
+  }
+}
+
+// Track lesson progress
+export async function updateLessonProgress(
+  userId: string,
+  lessonId: string,
+  isCompleted: boolean = false
+) {
+  const supabase = await createClient();
+
+  try {
+    const { data, error } = await supabase
+      .from("user_lesson_progress")
+      .upsert({
+        user_id: userId,
+        lesson_id: lessonId,
+        is_completed: isCompleted,
+        completed_at: isCompleted ? new Date().toISOString() : null,
+        started_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error("Error in updateLessonProgress:", error);
+    return { data: null, error };
   }
 }

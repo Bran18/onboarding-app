@@ -1,4 +1,3 @@
-// contexts/LearningProgressContext.tsx
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
@@ -8,6 +7,7 @@ import type {
   LessonProgress,
   LessonStatus,
 } from "@/types/learning";
+import { toast } from "sonner";
 import { useSupabase } from "./use-supabase";
 
 interface LearningProgressContextType {
@@ -15,6 +15,7 @@ interface LearningProgressContextType {
   loadingProgress: boolean;
   refreshProgress: () => Promise<void>;
   markLessonComplete: (lessonId: string) => Promise<void>;
+  startLessonProgress: (lessonId: string) => Promise<void>;
   getChapterProgress: (chapterId: string) => ChapterProgress | null;
   getLessonStatus: (lessonId: string) => LessonStatus;
 }
@@ -70,20 +71,58 @@ export function LearningProgressProvider({
       if (lessonsData) {
         setLessonProgress(lessonsData);
       }
+    } catch (error) {
+      toast.error("Error refreshing progress");
+      console.error(error);
     } finally {
       setLoadingProgress(false);
+    }
+  };
+
+  const startLessonProgress = async (lessonId: string) => {
+    if (!session?.user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("user_lesson_progress")
+        .upsert({
+          user_id: session.user.id,
+          lesson_id: lessonId,
+          started_at: new Date().toISOString(),
+          is_completed: false,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Update local state
+      setLessonProgress((prev) => [
+        ...prev.filter((p) => p.lesson_id !== lessonId),
+        data,
+      ]);
+
+      return data;
+    } catch (error) {
+      console.error("Error starting lesson:", error);
+      throw error;
     }
   };
 
   const markLessonComplete = async (lessonId: string) => {
     if (!session?.user) return;
 
-    const { data: lesson } = await supabase.rpc("complete_lesson", {
-      p_user_id: session.user.id,
-      p_lesson_id: lessonId,
-    });
+    try {
+      const { data: lesson } = await supabase.rpc("complete_lesson", {
+        p_user_id: session.user.id,
+        p_lesson_id: lessonId,
+      });
 
-    await refreshProgress();
+      await refreshProgress();
+    } catch (error) {
+      console.error("Error completing lesson:", error);
+      throw error;
+    }
   };
 
   const getChapterProgress = (chapterId: string) => {
@@ -98,8 +137,6 @@ export function LearningProgressProvider({
 
     if (progress?.is_completed) return "completed";
     if (progress?.started_at) return "in_progress";
-    // You'll need to implement the logic to check if a lesson is available
-    // based on prerequisites
     return "locked";
   };
 
@@ -136,6 +173,7 @@ export function LearningProgressProvider({
         loadingProgress,
         refreshProgress,
         markLessonComplete,
+        startLessonProgress,
         getChapterProgress,
         getLessonStatus,
       }}

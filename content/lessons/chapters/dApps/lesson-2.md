@@ -3,9 +3,7 @@ id: "navigating-dapps-lesson2"
 title: "Connecting Your Wallet to a dApp"
 description: "Learn how to connect your Web3 wallet to a decentralized application (dApp)."
 xpReward: 100
-status: "available"
 estimatedTime: 30
-prerequisites: ["navigating-dapps-lesson1"]
 order: 2
 ---
 

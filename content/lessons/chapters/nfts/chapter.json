@@ -3,9 +3,6 @@
   "title": "NFTs (Non-Fungible Tokens)",
   "description": "Learn about non-fungible tokens (NFTs), their use cases, and how to mint and trade them.",
   "order": 5,
-  "xpReward": 500,
   "category": "NFTs",
-  "status": "locked",
-  "totalLessons": 3,
-  "completedLessons": 0
+  "xpReward": 500
 }

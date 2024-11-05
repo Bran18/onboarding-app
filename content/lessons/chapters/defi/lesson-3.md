@@ -3,9 +3,7 @@ id: "nfts-lesson3"
 title: "The Future of NFTs"
 description: "Explore the potential future applications and impact of NFTs across various industries."
 xpReward: 100
-status: "available"
-estimatedTime: 30  
-prerequisites: ["nfts-lesson1"]
+estimatedTime: 30
 order: 3
 ---
 

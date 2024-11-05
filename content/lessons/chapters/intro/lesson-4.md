@@ -3,9 +3,7 @@ id: "web3-basics-lesson4"
 title: "Exploring the Web3 Ecosystem" 
 description: "Discover the key components and platforms that make up the Web3 ecosystem."
 xpReward: 100 
-status: "available"
 estimatedTime: 60
-prerequisites: ["web3-basics-lesson2"]
 order: 4
 ---
 

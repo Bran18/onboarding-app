@@ -3,9 +3,7 @@ id: "nfts-lesson2"
 title: "Minting and Buying NFTs"
 description: "Learn how to mint your own NFTs and purchase NFTs from marketplaces."
 xpReward: 100
-status: "available"
 estimatedTime: 45
-prerequisites: ["nfts-lesson1", "navigating-dapps-lesson3"]
 order: 2
 ---
 

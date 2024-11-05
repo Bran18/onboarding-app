@@ -3,9 +3,7 @@ id: "smart-contracts-lesson1"
 title: "What are Smart Contracts?"
 description: "Learn about the fundamentals of smart contracts and how they enable trustless execution of agreements on blockchain networks."
 xpReward: 100
-status: "available"
 estimatedTime: 30
-prerequisites: ["web3-basics-lesson2"]
 order: 1
 ---
 

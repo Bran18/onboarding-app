@@ -3,9 +3,6 @@
   "title": "Navigating Web3 dApps",
   "description": "Learn how to set up a Web3 wallet, connect to dApps, and interact with tokens.",
   "order": 3,
-  "xpReward": 500,
   "category": "DApps",
-  "status": "locked",
-  "totalLessons": 5,
-  "completedLessons": 0
+  "xpReward": 500
 }

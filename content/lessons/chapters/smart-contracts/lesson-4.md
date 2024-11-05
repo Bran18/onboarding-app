@@ -3,9 +3,7 @@ id: "smart-contracts-lesson3-nondev"
 title: "Real-world Smart Contract Applications (For Non-Developers)"
 description: "Explore real-world examples of smart contract applications and their impact on various industries."
 xpReward: 100
-status: "available"
 estimatedTime: 45
-prerequisites: ["smart-contracts-lesson2"] 
 order: 4
 ---
 

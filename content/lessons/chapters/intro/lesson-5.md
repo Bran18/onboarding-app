@@ -3,9 +3,7 @@ id: "web3-basics-lesson5"
 title: "Understanding Cryptocurrency Basics"
 description: "Learn about the fundamentals of cryptocurrencies, including how they work and their key properties."
 xpReward: 100
-status: "available" 
 estimatedTime: 45
-prerequisites: ["web3-basics-lesson2"]
 order: 5 
 ---
 

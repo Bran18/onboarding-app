@@ -3,9 +3,7 @@ id: "navigating-dapps-lesson1"
 title: "Setting up a Web3 Wallet"
 description: "Learn how to set up a Web3 wallet to store your cryptocurrencies and interact with dApps."
 xpReward: 100
-status: "available"
 estimatedTime: 30
-prerequisites: ["web3-basics-lesson3"]
 order: 1
 ---
 
