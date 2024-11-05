@@ -39,10 +39,10 @@ export async function syncChaptersWithSupabase(chapters: Chapter[]) {
         slug: chapter.slug,
         title: chapter.title,
         description: chapter.description,
-        order_sequence: chapter.orderSequence,
+        order_sequence: chapter.order_sequence,
         status: chapter.status,
         category: chapter.category,
-        xp_reward: chapter.xpReward,
+        xp_reward: chapter.xp_reward,
         content_path: chapter.content_path
       })),
       { onConflict: 'id' }
@@ -64,9 +64,9 @@ export async function syncLessonsWithSupabase(lessons: Lesson[], chapterSlug: st
         chapter_id: chapterSlug,
         title: lesson.title,
         description: lesson.description,
-        xp_reward: lesson.xpReward,
-        estimated_time: lesson.estimatedTime,
-        order_sequence: lesson.orderSequence,
+        xp_reward: lesson.xp_reward,
+        estimated_time: lesson.estimated_time,
+        order_sequence: lesson.order_sequence,
         content_path: lesson.content_path
       })),
       { onConflict: 'id' }

@@ -20,9 +20,7 @@ interface LearningProgressContextType {
   getLessonStatus: (lessonId: string) => LessonStatus;
 }
 
-const LearningProgressContext = createContext<
-  LearningProgressContextType | undefined
->(undefined);
+const LearningProgressContext = createContext<LearningProgressContextType | undefined>(undefined);
 
 export function LearningProgressProvider({
   children,
@@ -41,35 +39,50 @@ export function LearningProgressProvider({
     try {
       setLoadingProgress(true);
 
-      // Fetch user progress
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", session.user.id)
-        .single();
+      // Fetch user progress and all lesson progress in parallel
+      const [profileResult, lessonsResult] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", session.user.id)
+          .single(),
+        supabase
+          .from("user_lesson_progress")
+          .select(`
+            *,
+            lessons (
+              id,
+              chapter_id
+            )
+          `)
+          .eq("user_id", session.user.id)
+      ]);
 
-      if (profileData) {
-        setUserProgress(profileData);
+      if (profileResult.data) {
+        setUserProgress(profileResult.data);
       }
 
-      // Fetch chapter progress
-      const { data: chaptersData } = await supabase
-        .from("user_chapter_progress")
-        .select("*")
-        .eq("user_id", session.user.id);
-
-      if (chaptersData) {
-        setChapterProgress(chaptersData);
-      }
-
-      // Fetch lesson progress
-      const { data: lessonsData } = await supabase
-        .from("user_lesson_progress")
-        .select("*")
-        .eq("user_id", session.user.id);
-
-      if (lessonsData) {
-        setLessonProgress(lessonsData);
+      if (lessonsResult.data) {
+        setLessonProgress(lessonsResult.data);
+        
+        // Calculate chapter progress based on completed lessons
+        const chaptersMap = new Map<string, ChapterProgress>();
+        
+        // biome-ignore lint/complexity/noForEach: <explanation>
+                lessonsResult.data.forEach(progress => {
+          if (progress.lessons?.chapter_id && progress.is_completed) {
+            const chapterId = progress.lessons.chapter_id;
+            const existing = chaptersMap.get(chapterId) || {
+              chapter_id: chapterId,
+              completed_lessons: 0,
+              user_id: session.user.id
+            };
+            existing.completed_lessons += 1;
+            chaptersMap.set(chapterId, existing);
+          }
+        });
+        
+        setChapterProgress(Array.from(chaptersMap.values()));
       }
     } catch (error) {
       toast.error("Error refreshing progress");
@@ -96,7 +109,6 @@ export function LearningProgressProvider({
 
       if (error) throw error;
 
-      // Update local state
       setLessonProgress((prev) => [
         ...prev.filter((p) => p.lesson_id !== lessonId),
         data,
@@ -105,6 +117,7 @@ export function LearningProgressProvider({
       return data;
     } catch (error) {
       console.error("Error starting lesson:", error);
+      toast.error("Failed to start lesson");
       throw error;
     }
   };
@@ -113,23 +126,34 @@ export function LearningProgressProvider({
     if (!session?.user) return;
 
     try {
-      const { data: lesson } = await supabase.rpc("complete_lesson", {
-        p_user_id: session.user.id,
-        p_lesson_id: lessonId,
-      });
+      const timestamp = new Date().toISOString();
+      
+      const { data, error } = await supabase
+        .from("user_lesson_progress")
+        .upsert({
+          user_id: session.user.id,
+          lesson_id: lessonId,
+          is_completed: true,
+          completed_at: timestamp,
+          started_at: timestamp
+        })
+        .select()
+        .single();
 
+      if (error) throw error;
+
+      // Refresh progress to update chapter progress
       await refreshProgress();
+      toast.success("Lesson completed!");
     } catch (error) {
       console.error("Error completing lesson:", error);
+      toast.error("Failed to complete lesson");
       throw error;
     }
   };
 
-  const getChapterProgress = (chapterId: string) => {
-    return (
-      chapterProgress.find((progress) => progress.chapter_id === chapterId) ??
-      null
-    );
+  const getChapterProgress = (chapterId: string): ChapterProgress | null => {
+    return chapterProgress.find((progress) => progress.chapter_id === chapterId) ?? null;
   };
 
   const getLessonStatus = (lessonId: string): LessonStatus => {
@@ -137,7 +161,7 @@ export function LearningProgressProvider({
 
     if (progress?.is_completed) return "completed";
     if (progress?.started_at) return "in_progress";
-    return "locked";
+    return "available"; // Changed from "locked" to match your current implementation
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
