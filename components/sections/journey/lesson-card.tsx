@@ -10,6 +10,8 @@ import type { Lesson, LessonStatus } from "@/types/learning";
 import { Progress } from "@/components/ui/progress";
 import { useEffect, useState } from "react";
 import { useLearningProgress } from "@/context/learning-progress";
+import { useRouter } from "next/navigation"; // Changed from 'next/router' to 'next/navigation'
+import { toast } from "sonner";
 
 interface LessonCardProps {
   lesson: Lesson;
@@ -24,6 +26,7 @@ export function LessonCard({
   isLocked = false,
   showProgress = true,
 }: LessonCardProps) {
+  const router = useRouter(); // This is now correctly initialized
   const { getLessonStatus, startLessonProgress } = useLearningProgress();
   const [progressValue, setProgressValue] = useState(0);
   const [isStarting, setIsStarting] = useState(false);
@@ -66,17 +69,31 @@ export function LessonCard({
   }, [currentStatus, lesson.progress?.started_at, lesson.estimated_time]);
 
   const handleStartLesson = async (e: React.MouseEvent) => {
-    if (!lesson.slug || isLocked) return;
+    if (!lesson.slug || isLocked || isStarting) return;
 
     try {
       setIsStarting(true);
       e.preventDefault();
       await startLessonProgress(lesson.id);
-      window.location.href = `/journey/chapters/${chapterSlug}/${lesson.slug}`;
+      router.push(`/journey/chapters/${chapterSlug}/${lesson.slug}`);
     } catch (error) {
       console.error("Failed to start lesson:", error);
+      toast.error("Failed to start lesson. Please try again.");
     } finally {
       setIsStarting(false);
+    }
+  };
+
+  const getButtonText = () => {
+    if (isStarting) return "Starting...";
+    if (isLocked) return "Locked";
+    switch (lesson.status) {
+      case "completed":
+        return "Review Lesson";
+      case "in_progress":
+        return "Continue Lesson";
+      default:
+        return "Start Lesson";
     }
   };
 
@@ -116,7 +133,6 @@ export function LessonCard({
                 </p>
               </div>
             )}
-
             {isLocked ? (
               <div className="flex items-center justify-between">
                 <Badge variant="outline" className="text-xs">
@@ -126,32 +142,17 @@ export function LessonCard({
               </div>
             ) : (
               <div className="flex justify-end">
-                {lesson.slug ? (
-                  <Link
-                    href={`/journey/chapters/${chapterSlug}/${lesson.slug}`}
-                    onClick={
-                      currentStatus === "available"
-                        ? handleStartLesson
-                        : undefined
-                    }
-                  >
-                    <Button variant="outline" size="sm" disabled={isStarting}>
-                      {isStarting
-                        ? "Starting..."
-                        : currentStatus === "completed"
-                        ? "Review"
-                        : currentStatus === "in_progress"
-                        ? "Continue"
-                        : "Start"}{" "}
-                      Lesson
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
-                ) : (
-                  <Button variant="outline" size="sm" disabled>
-                    Error: Missing Lesson ID
-                  </Button>
-                )}
+                <Button
+                  onClick={handleStartLesson}
+                  variant={
+                    currentStatus === "completed" ? "outline" : "default"
+                  }
+                  size="sm"
+                  disabled={isStarting || isLocked}
+                >
+                  {getButtonText()}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
               </div>
             )}
           </div>

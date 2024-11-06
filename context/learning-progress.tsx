@@ -20,7 +20,9 @@ interface LearningProgressContextType {
   getLessonStatus: (lessonId: string) => LessonStatus;
 }
 
-const LearningProgressContext = createContext<LearningProgressContextType | undefined>(undefined);
+const LearningProgressContext = createContext<
+  LearningProgressContextType | undefined
+>(undefined);
 
 export function LearningProgressProvider({
   children,
@@ -48,14 +50,16 @@ export function LearningProgressProvider({
           .single(),
         supabase
           .from("user_lesson_progress")
-          .select(`
+          .select(
+            `
             *,
             lessons (
               id,
               chapter_id
             )
-          `)
-          .eq("user_id", session.user.id)
+          `
+          )
+          .eq("user_id", session.user.id),
       ]);
 
       if (profileResult.data) {
@@ -64,24 +68,24 @@ export function LearningProgressProvider({
 
       if (lessonsResult.data) {
         setLessonProgress(lessonsResult.data);
-        
+
         // Calculate chapter progress based on completed lessons
         const chaptersMap = new Map<string, ChapterProgress>();
-        
+
         // biome-ignore lint/complexity/noForEach: <explanation>
-                lessonsResult.data.forEach(progress => {
+        lessonsResult.data.forEach((progress) => {
           if (progress.lessons?.chapter_id && progress.is_completed) {
             const chapterId = progress.lessons.chapter_id;
             const existing = chaptersMap.get(chapterId) || {
               chapter_id: chapterId,
               completed_lessons: 0,
-              user_id: session.user.id
+              user_id: session.user.id,
             };
             existing.completed_lessons += 1;
             chaptersMap.set(chapterId, existing);
           }
         });
-        
+
         setChapterProgress(Array.from(chaptersMap.values()));
       }
     } catch (error) {
@@ -96,28 +100,54 @@ export function LearningProgressProvider({
     if (!session?.user) return;
 
     try {
+      const timestamp = new Date().toISOString();
+
+      // First check if a progress record exists
+      const { data: existingProgress } = await supabase
+        .from("user_lesson_progress")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .eq("lesson_id", lessonId)
+        .maybeSingle();
+
+      if (existingProgress) {
+        // If progress exists and it's not completed, update the timestamps
+        if (!existingProgress.is_completed) {
+          const { data, error } = await supabase
+            .from("user_lesson_progress")
+            .update({
+              started_at: timestamp,
+              updated_at: timestamp,
+            })
+            .eq("user_id", session.user.id)
+            .eq("lesson_id", lessonId)
+            .select()
+            .single();
+
+          if (error) throw error;
+          return data;
+        }
+        return existingProgress;
+      }
+
+      // Insert new record
       const { data, error } = await supabase
         .from("user_lesson_progress")
-        .upsert({
+        .insert({
           user_id: session.user.id,
           lesson_id: lessonId,
-          started_at: new Date().toISOString(),
+          started_at: timestamp,
+          updated_at: timestamp,
           is_completed: false,
+          completed_at: null,
         })
         .select()
         .single();
 
       if (error) throw error;
-
-      setLessonProgress((prev) => [
-        ...prev.filter((p) => p.lesson_id !== lessonId),
-        data,
-      ]);
-
       return data;
     } catch (error) {
       console.error("Error starting lesson:", error);
-      toast.error("Failed to start lesson");
       throw error;
     }
   };
@@ -127,24 +157,57 @@ export function LearningProgressProvider({
 
     try {
       const timestamp = new Date().toISOString();
-      
-      const { data, error } = await supabase
-        .from("user_lesson_progress")
-        .upsert({
-          user_id: session.user.id,
-          lesson_id: lessonId,
-          is_completed: true,
-          completed_at: timestamp,
-          started_at: timestamp
-        })
-        .select()
-        .single();
 
-      if (error) throw error;
+      // First, check if a progress record exists
+      const { data: existingProgress } = await supabase
+        .from("user_lesson_progress")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .eq("lesson_id", lessonId)
+        .maybeSingle();
+
+      // biome-ignore lint/suspicious/noImplicitAnyLet: <explanation>
+      let result;
+
+      if (existingProgress) {
+        // Update existing record
+        result = await supabase
+          .from("user_lesson_progress")
+          .update({
+            is_completed: true,
+            completed_at: timestamp,
+            updated_at: timestamp,
+          })
+          .eq("user_id", session.user.id)
+          .eq("lesson_id", lessonId)
+          .select()
+          .single();
+      } else {
+        // Insert new record
+        result = await supabase
+          .from("user_lesson_progress")
+          .insert({
+            user_id: session.user.id,
+            lesson_id: lessonId,
+            is_completed: true,
+            completed_at: timestamp,
+            started_at: timestamp,
+            updated_at: timestamp,
+          })
+          .select()
+          .single();
+      }
+
+      if (result.error) throw result.error;
+
+      // Update local state
+      setLessonProgress((prev) => [
+        ...prev.filter((p) => p.lesson_id !== lessonId),
+        result.data,
+      ]);
 
       // Refresh progress to update chapter progress
       await refreshProgress();
-      toast.success("Lesson completed!");
     } catch (error) {
       console.error("Error completing lesson:", error);
       toast.error("Failed to complete lesson");
@@ -153,7 +216,10 @@ export function LearningProgressProvider({
   };
 
   const getChapterProgress = (chapterId: string): ChapterProgress | null => {
-    return chapterProgress.find((progress) => progress.chapter_id === chapterId) ?? null;
+    return (
+      chapterProgress.find((progress) => progress.chapter_id === chapterId) ??
+      null
+    );
   };
 
   const getLessonStatus = (lessonId: string): LessonStatus => {

@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ProgressBar } from "./progress-bar";
 import { CheckCircle, ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import Link from "next/link";
 import { XPCounter } from "./xp-counter";
@@ -15,7 +14,6 @@ import { toast } from "sonner";
 import { useLearningProgress } from "@/context/learning-progress";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
-import { updateLessonProgress } from "@/lib/lessons/lessons";
 
 interface LessonContentProps {
   lesson: Lesson;
@@ -34,9 +32,11 @@ export function LessonContent({
   const [progress, setProgress] = useState(0);
   const [timeSpent, setTimeSpent] = useState(0);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const currentStatus = getLessonStatus(lesson.id);
   const startTimeRef = useRef<number | null>(null);
   const [hasFinishedReading, setHasFinishedReading] = useState(false);
+  const initializationAttempted = useRef(false);
 
   // Initialize start time once
   useEffect(() => {
@@ -47,6 +47,36 @@ export function LessonContent({
     }
   }, [currentStatus, lesson.progress?.started_at]);
 
+ // Start lesson when first viewing - with cleanup
+ useEffect(() => {
+  const initializeLesson = async () => {
+    // Prevent multiple initialization attempts
+    if (initializationAttempted.current) return;
+    
+    if (currentStatus === "available") {
+      try {
+        initializationAttempted.current = true;
+        await startLessonProgress(lesson.id);
+        startTimeRef.current = Date.now();
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+      } catch (error: any) {
+        // Ignore duplicate key errors as they're expected in some cases
+        if (error?.code !== '23505') {
+          console.error("Error starting lesson:", error);
+          toast.error("Failed to start lesson");
+        }
+      }
+    }
+  };
+
+  initializeLesson();
+
+  // Cleanup function
+  return () => {
+    initializationAttempted.current = false;
+  };
+}, [lesson.id, currentStatus, startLessonProgress]);
+
   // Track progress
   useEffect(() => {
     if (currentStatus !== "in_progress" || !startTimeRef.current) return;
@@ -54,10 +84,9 @@ export function LessonContent({
     const updateProgress = () => {
       const now = Date.now();
       // biome-ignore lint/style/noNonNullAssertion: <explanation>
-      const elapsed = Math.floor((now - startTimeRef.current!) / 1000); // seconds
+      const elapsed = Math.floor((now - startTimeRef.current!) / 1000);
       setTimeSpent(elapsed);
 
-      // Calculate progress as a percentage (0-100)
       const totalTimeInSeconds = lesson.estimated_time * 60;
       const progressPercentage = Math.min(
         Math.floor((elapsed / totalTimeInSeconds) * 100),
@@ -67,60 +96,37 @@ export function LessonContent({
       setProgress(progressPercentage);
     };
 
-    // Initial update
     updateProgress();
-
-    // Set up interval for updates
     const timer = setInterval(updateProgress, 1000);
 
     return () => clearInterval(timer);
   }, [currentStatus, lesson.estimated_time]);
 
-  // Start lesson when first viewing
-  useEffect(() => {
-    const initializeLesson = async () => {
-      if (currentStatus === "available") {
-        try {
-          await startLessonProgress(lesson.id);
-          startTimeRef.current = Date.now();
-        } catch (error) {
-          console.error("Error starting lesson:", error);
-          toast.error("Failed to start lesson");
-        }
-      }
-    };
+// * Handle completion of lesson
+const handleComplete = async () => {
+  if (isCompleting) return;
 
-    initializeLesson();
-  }, [lesson.id, currentStatus, startLessonProgress]);
+  try {
+    setIsCompleting(true);
+    await markLessonComplete(lesson.id);
+    
+    toast.success('Lesson completed! 🎉', {
+      description: `You've earned ${lesson.xp_reward} XP!`
+    });
 
-  const handleComplete = async () => {
-    try {
-      setIsCompleting(true);
-      const { error } = await updateLessonProgress(userId, lesson.id, true);
-
-      if (error) {
-        toast.error("Failed to complete lesson");
-        console.error("Error completing lesson:", error);
-        return;
-      }
-
-      toast.success("Lesson completed! 🎉", {
-        description: `You've earned ${lesson.xp_reward} XP!`,
-      });
-
-      // Navigate to next lesson or chapter
-      if (nextLessonSlug) {
-        router.push(`/journey/chapters/${lesson.chapter_id}/${nextLessonSlug}`);
-      } else {
-        router.push(`/journey/chapters/${lesson.chapter_id}`);
-      }
-    } catch (error) {
-      console.error("Error completing lesson:", error);
-      toast.error("Failed to complete lesson");
-    } finally {
-      setIsCompleting(false);
+    // Navigate to next lesson or chapter
+    if (nextLessonSlug) {
+      router.push(`/journey/chapters/${lesson.chapter_id}/${nextLessonSlug}`);
+    } else {
+      router.push(`/journey/chapters/${lesson.chapter_id}`);
     }
-  };
+  } catch (error) {
+    console.error('Error completing lesson:', error);
+    toast.error("Failed to complete lesson. Please try again.");
+  } finally {
+    setIsCompleting(false);
+  }
+};
 
   const canComplete =
     progress >= 90 || currentStatus === "completed" || hasFinishedReading;

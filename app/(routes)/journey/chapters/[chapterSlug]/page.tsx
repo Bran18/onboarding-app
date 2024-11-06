@@ -33,17 +33,12 @@ async function ChapterContent({ chapterSlug }: { chapterSlug: string }) {
     return redirect("/journey");
   }
 
-  // Transform the lessons from the chapter response
-  const lessons = chapterResponse.data.lessons?.map((lesson: { status: string; }) => ({
-    ...lesson,
-    status: lesson.status === "published" ? "available" : "locked",
-  })) || [];
-
   return (
     <LessonList
       chapterTitle={chapterResponse.data.title}
       chapterSlug={chapterSlug}
-      lessons={lessons}
+      lessons={chapterResponse.data.lessons}
+      completedLessons={chapterResponse.data.completed_lessons}
     />
   );
 }

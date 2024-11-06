@@ -11,10 +11,12 @@ interface LessonListProps {
   chapterTitle: string;
   chapterSlug: string;
   lessons: Lesson[];
+  completedLessons: number;
 }
 
 export function LessonList({ chapterTitle, chapterSlug, lessons }: LessonListProps) {
   const completedLessons = lessons.filter(lesson => lesson.status === 'completed').length;
+  const progress = (completedLessons / lessons.length) * 100;
 
   return (
     <div className="space-y-6">
@@ -30,10 +32,15 @@ export function LessonList({ chapterTitle, chapterSlug, lessons }: LessonListPro
 
       <Card>
         <CardHeader className="space-y-4">
-          <CardTitle>{chapterTitle}</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle>{chapterTitle}</CardTitle>
+            <div className="text-sm text-muted-foreground">
+              {completedLessons} of {lessons.length} completed
+            </div>
+          </div>
           <ProgressBar 
-            value={completedLessons} 
-            max={lessons.length} 
+            value={progress} 
+            max={100}
             className="w-full"
           />
         </CardHeader>
