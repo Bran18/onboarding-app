@@ -3,9 +3,7 @@ id: "web3-basics-lesson1"
 title: "Introduction to Decentralization"
 description: "Learn about the core principles of decentralization and how it differs from traditional centralized systems."
 xpReward: 100
-status: "available"
 estimatedTime: 30
-prerequisites: []
 order: 1
 ---
 

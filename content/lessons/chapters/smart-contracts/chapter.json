@@ -3,9 +3,6 @@
   "title": "Smart Contracts",
   "description": "Learn about smart contracts, their use cases, and how to create them.",
   "order": 2,
-  "xpReward": 500,
   "category": "Smart Contracts",
-  "status": "locked",
-  "totalLessons": 5,
-  "completedLessons": 0
+  "xpReward": 500
 }

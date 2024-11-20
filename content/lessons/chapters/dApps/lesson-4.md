@@ -3,9 +3,7 @@ id: "navigating-dapps-lesson4"
 title: "dApp Security Best Practices"
 description: "Learn about essential security best practices when interacting with decentralized applications (dApps)."
 xpReward: 100
-status: "available"
 estimatedTime: 30
-prerequisites: ["navigating-dapps-lesson2"]
 order: 4
 ---
 

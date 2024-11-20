@@ -3,9 +3,7 @@ id: "security-fundamentals-lesson2"
 title: "Common Attack Vectors"
 description: "Understand common attack vectors in the Web3 ecosystem and how to protect yourself against them."
 xpReward: 100
-status: "available"
 estimatedTime: 60
-prerequisites: ["security-fundamentals-lesson1"]
 order: 2
 ---
 

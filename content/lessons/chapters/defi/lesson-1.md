@@ -3,9 +3,7 @@ id: "defi-essentials-lesson1"
 title: "Introduction to DeFi" 
 description: "Understand the basics of decentralized finance (DeFi) and its key advantages over traditional finance."
 xpReward: 100
-status: "available"
 estimatedTime: 30
-prerequisites: ["smart-contracts-lesson1"]
 order: 1
 ---
 

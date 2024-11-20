@@ -3,9 +3,7 @@ id: "smart-contracts-lesson4-dev"
 title: "Creating Your First Smart Contract (For Developers)"
 description: "Step-by-step guide to creating and deploying your first smart contract on the Ethereum blockchain using Solidity and Remix IDE."
 xpReward: 100
-status: "available"
 estimatedTime: 90
-prerequisites: ["smart-contracts-lesson3-dev"]
 order: 5
 ---
 

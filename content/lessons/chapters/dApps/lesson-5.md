@@ -3,9 +3,7 @@ id: "navigating-dapps-lesson5"
 title: "How to transfer tokens from wallet to wallet"
 description: "Learn how to transfer ERC20 tokens from one Web3 wallet to another."
 xpReward: 100
-status: "available"
 estimatedTime: 30
-prerequisites: ["navigating-dapps-lesson1"]
 order: 5
 ---
 

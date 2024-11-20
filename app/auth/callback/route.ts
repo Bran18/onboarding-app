@@ -1,12 +1,22 @@
 // app/auth/callback/route.ts
 import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
+
+// Add this line to mark the route as dynamic
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
+    // Get the host from headers instead of using request.url directly
+    const headersList = headers();
+    const host = headersList.get("host") || "";
+    const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
+
     const requestUrl = new URL(request.url);
     const code = requestUrl.searchParams.get("code");
-    const origin = requestUrl.origin;
+    // Construct origin using host header
+    const origin = `${protocol}://${host}`;
     const next = requestUrl.searchParams.get("next")?.toString();
     const redirectTo = requestUrl.searchParams.get("redirect_to")?.toString();
 
@@ -32,8 +42,8 @@ export async function GET(request: Request) {
           return NextResponse.redirect(`${origin}${redirectTo}`);
         }
 
-        // // Default successful auth redirect
-        // return NextResponse.redirect(`${origin}/journey`);
+        // Default successful auth redirect
+        return NextResponse.redirect(`${origin}/journey`);
       }
     }
 

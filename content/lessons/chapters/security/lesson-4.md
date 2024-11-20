@@ -3,9 +3,7 @@ id: "security-fundamentals-lesson4"
 title: "Smart Contract Security"
 description: "Understand the importance of smart contract security and best practices for developing and interacting with secure contracts."
 xpReward: 100
-status: "available"
 estimatedTime: 60
-prerequisites: ["smart-contracts-lesson1"]
 order: 4
 ---
 

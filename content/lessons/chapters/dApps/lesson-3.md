@@ -3,9 +3,7 @@ id: "navigating-dapps-lesson3"
 title: "Popular Web3 Platforms"
 description: "Explore some of the most popular Web3 platforms and their use cases."
 xpReward: 100
-status: "available"
 estimatedTime: 45
-prerequisites: ["navigating-dapps-lesson2"]
 order: 3
 ---
 

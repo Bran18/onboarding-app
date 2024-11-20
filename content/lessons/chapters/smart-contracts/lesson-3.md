@@ -3,9 +3,7 @@ id: "smart-contracts-lesson3-dev"
 title: "Solidity Fundamentals (For Developers)"
 description: "Learn the basics of Solidity, the primary programming language for writing smart contracts on the Ethereum blockchain."
 xpReward: 100  
-status: "available"
 estimatedTime: 60
-prerequisites: ["smart-contracts-lesson2"]
 order: 3
 ---
 

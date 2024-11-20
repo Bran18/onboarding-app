@@ -1,7 +1,9 @@
-// webapp/app/(routes)/journey/chapters/[chapterSlug]/page.tsx
-import { getLessonsByChapter, getChapter } from '@/lib/lessons/lessons';
-import { LessonList } from '@/components/sections/learning/lesson-list';
-import { notFound } from 'next/navigation';
+import { Suspense } from "react";
+import { redirect, notFound } from "next/navigation";
+import { createClient } from "@/utils/supabase/server";
+import { LessonList } from "@/components/sections/journey/lesson-list";
+import { getChapter, getLessonsByChapter } from "@/lib/lessons/lessons";
+import { Loader2 } from "lucide-react";
 
 interface ChapterPageProps {
   params: {
@@ -9,19 +11,50 @@ interface ChapterPageProps {
   };
 }
 
-export default async function ChapterPage({ params }: ChapterPageProps) {
-  const chapter = await getChapter(params.chapterSlug);
-  if (!chapter) return notFound();
-  
-  const lessons = await getLessonsByChapter(params.chapterSlug);
-  
+async function ChapterContent({ chapterSlug }: { chapterSlug: string }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return redirect("/sign-in");
+  }
+
+  const chapterResponse = await getChapter(user.id, chapterSlug);
+
+  if (!chapterResponse.data || chapterResponse.error) {
+    console.error("Error loading chapter:", chapterResponse.error);
+    return notFound();
+  }
+
+  // Check if chapter is available
+  if (chapterResponse.data.status === "locked") {
+    return redirect("/journey");
+  }
+
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <LessonList 
-        lessons={lessons} 
-        chapterSlug={params.chapterSlug}
-        chapterTitle={chapter.title}
-      />
+    <LessonList
+      chapterTitle={chapterResponse.data.title}
+      chapterSlug={chapterSlug}
+      lessons={chapterResponse.data.lessons}
+      completedLessons={chapterResponse.data.completed_lessons}
+    />
+  );
+}
+
+export default function ChapterPage({ params }: ChapterPageProps) {
+  return (
+    <div className="container max-w-4xl py-6">
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center min-h-[400px]">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        }
+      >
+        <ChapterContent chapterSlug={params.chapterSlug} />
+      </Suspense>
     </div>
   );
 }

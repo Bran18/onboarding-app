@@ -3,9 +3,7 @@ id: "smart-contracts-lesson2"
 title: "Blockchain Networks and Gas Fees"
 description: "Understand the role of blockchain networks in executing smart contracts and the concept of gas fees."
 xpReward: 100
-status: "available"
 estimatedTime: 30
-prerequisites: ["smart-contracts-lesson1"]
 order: 2
 ---
 

@@ -3,7 +3,6 @@
 
 import { useState } from 'react';
 import { useAuthActions } from '@/hooks/auth/use-auth-actions';
-import { useAuth } from '@/hooks/auth/use-user';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +15,7 @@ import {
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
+import { useAuth } from '@/context/use-supabase';
 
 export default function SignIn({ 
   searchParams 

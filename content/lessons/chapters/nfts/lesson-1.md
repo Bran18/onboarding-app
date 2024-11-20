@@ -3,9 +3,7 @@ id: "nfts-lesson1"
 title: "What are NFTs?"
 description: "Understand the basics of non-fungible tokens (NFTs) and their unique properties."
 xpReward: 100
-status: "available"
 estimatedTime: 30
-prerequisites: ["web3-basics-lesson2"]
 order: 1
 ---
 

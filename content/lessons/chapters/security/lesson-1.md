@@ -3,9 +3,7 @@ id: "security-fundamentals-lesson1"
 title: "Web3 Security Best Practices"
 description: "Discover essential security best practices for safeguarding your assets and data in the Web3 ecosystem."
 xpReward: 100
-status: "available"
 estimatedTime: 45
-prerequisites: ["navigating-dapps-lesson4"]
 order: 1  
 ---
 
